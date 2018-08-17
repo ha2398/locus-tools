@@ -36,8 +36,12 @@ def generate_links(imgs_data):
         @return: (string list) List with the Google Search by Image links.
     '''
 
-    links = [URL.format(imgs_data[str(img_n)]['imageID'])
-             for img_n in range(1, args.n_images + 1)]
+    links = []
+    for img_n in range(1, args.n_images + 1):
+        if str(img_n) in imgs_data:
+            links.append(URL.format(imgs_data[str(img_n)]['imageID']))
+        else:
+            break
 
     return links
 

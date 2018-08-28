@@ -11,6 +11,7 @@ files describing a set of images.
 
 from argparse import ArgumentParser
 from bs4 import BeautifulSoup
+from contextlib import closing
 from time import sleep
 from random import uniform
 
@@ -38,13 +39,21 @@ args = parser.parse_args()
 
 SOURCES_FOLDER = os.path.join(args.json_folder, 'sources')
 
-URL = 'http://images.google.com/searchbyimage?image_url=' + \
+URL = 'http://images.google.com.br/searchbyimage?image_url=' + \
       'http://www.monitor-de-whatsapp.dcc.ufmg.br/data/images/{}'
 
-DOMAIN = 'www.google.com'
+DOMAIN = 'www.google.com.br'
 
-USER_AGENT = user_agent = '''Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 \
- (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36'''
+USER_AGENT = '''Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 \
+(KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36'''
+
+PROXY_IP = '149.28.118.14'
+PROXY_PORT = '8080'
+
+PROXIES = {
+    'http': 'http://{}:{}'.format(PROXY_IP, PROXY_PORT),
+    'https': 'https://{}:{}'.format(PROXY_IP, PROXY_PORT)
+}
 
 
 def process_url(url):
@@ -72,12 +81,20 @@ def get_html(url):
     '''
 
     url = process_url(url)
-    headers = [('User-Agent', USER_AGENT),
-               ("Accept-Language", "en-US,en;q=0.5"), ]
+    headers = [('User-Agent', USER_AGENT)]
+    # handler = urllib.request.ProxyHandler(PROXIES)
     opener = urllib.request.build_opener()
     opener.addheaders = headers
 
-    html = opener.open(url).read().decode()
+    try:
+        with closing(opener.open(url)) as open_url:
+            html = open_url.read().decode()
+    except urllib.error.HTTPError as http_error:
+        print(http_error, '\tURL:', url)
+        exit()
+
+    # html = opener.open(url).read().decode()
+    slow_down()
     return html
 
 
@@ -145,7 +162,6 @@ def get_sources(url):
 
         sources += get_page_sources(html)
         html = get_next_page(html)
-        slow_down()
 
         if html is None:
             break

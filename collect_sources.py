@@ -157,7 +157,7 @@ def get_sources(url):
 
     page = 1
     while True:  # Look for other sources in the rest of the result pages.
-        print('\t\t[+] Search result page {}'.format(page), file=sys.stderr)
+        print('\t\t[+] Search result page {}'.format(page))
         page += 1
 
         sources += get_page_sources(html)
@@ -211,7 +211,7 @@ def collect_sources():
 
     # Generate sources.
     for json_f in sorted(json_filenames):
-        print('[+] File {}'.format(json_f), file=sys.stderr)
+        print('[+] File {}'.format(json_f))
         json_f_path = os.path.join(args.json_folder, json_f)
 
         json_file = open(json_f_path, 'r')
@@ -223,7 +223,7 @@ def collect_sources():
 
         for img_id in links:
             img_name = imgs_data[img_id]['imageID']
-            print('\t[+] Image {}'.format(img_name), file=sys.stderr)
+            print('\t[+] Image {}'.format(img_name))
             sources = get_sources(links[img_id])
             output[img_id] = {}
             output[img_id]['sources'] = sources

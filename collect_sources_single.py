@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 '''
-Collect sources where images have previously appeared on, for a set of JSON
-files describing a set of images.
+Collect sources where images have previously appeared on, for a single JSON
+file describing a set of images for a set of days.
 
 @author: Hugo Sousa (hugosousa@dcc.ufmg.br)
 '''
@@ -17,17 +17,14 @@ from time import sleep
 from random import uniform
 
 import json
-import os
 import urllib.request
 
 
 # Add command line arguments.
 parser = ArgumentParser()
 
-parser.add_argument('json_folder', type=str,
-                    help='Path of the folder that contains the JSON files.')
-parser.add_argument('n_images', type=int, default=10,
-                    help='Number of images to create links for')
+parser.add_argument('json_file', type=str,
+                    help='Path of the JSON file.')
 parser.add_argument('sleep_min', type=float, default=31,
                     help='Minimum number of seconds to sleep between \
                     requests.')
@@ -36,8 +33,6 @@ parser.add_argument('sleep_max', type=float, default=35,
                     requests.')
 
 args = parser.parse_args()
-
-SOURCES_FOLDER = os.path.join(args.json_folder, 'sources')
 
 URL = 'http://images.google.com.br/searchbyimage?image_url=' + \
       'http://www.monitor-de-whatsapp.dcc.ufmg.br/data/images/{}'
@@ -201,26 +196,14 @@ def generate_links(imgs_data):
 
         @imgs_data: (dict) JSON dict with images data.
 
-        @return: (dict) Dict with the Google Search by Image links.
+        @return: (string list) List with the Google Search by Image links.
     '''
 
     links = {}
-    for img_n in range(1, args.n_images + 1):
-        if str(img_n) in imgs_data:
-            links[str(img_n)] = URL.format(imgs_data[str(img_n)]['imageID'])
-        else:
-            break
+    for img_n in imgs_data:
+        links[str(img_n)] = URL.format(imgs_data[str(img_n)]['imageID'])
 
     return links
-
-
-def init():
-    '''
-        Initialize script.
-    '''
-
-    if not os.path.exists(SOURCES_FOLDER):
-        os.makedirs(SOURCES_FOLDER)
 
 
 def collect_sources():
@@ -228,35 +211,23 @@ def collect_sources():
         Collect sources where images have previously appeared on.
     '''
 
-    # Get input files.
-    json_filenames = []
-    for json_f in os.listdir(args.json_folder):
-        if os.path.isfile(os.path.join(args.json_folder, json_f)):
-            if json_f.endswith('.json'):
-                json_filenames.append(json_f)
+    print('[+] File {}'.format(args.json_file))
+    json_file = open(args.json_file, 'r')
+    imgs_data = json.load(json_file)
+    json_file.close()
+    links = generate_links(imgs_data)
 
-    # Generate sources.
-    for json_f in sorted(json_filenames):
-        print('[+] File {}'.format(json_f))
-        json_f_path = os.path.join(args.json_folder, json_f)
+    for img_id in links:
+        img_name = imgs_data[img_id]['imageID']
+        print('\t[+] Image {}'.format(img_name))
+        sources = get_sources(links[img_id])
+        imgs_data[img_id]['sources'] = sources
 
-        json_file = open(json_f_path, 'r')
-        imgs_data = json.load(json_file)
-        json_file.close()
+    output_name = args.json_file[:args.json_file.find('.')] + '_sources.json'
+    output_file = open(output_name, 'w')
 
-        links = generate_links(imgs_data)
-
-        for img_id in links:
-            img_name = imgs_data[img_id]['imageID']
-            print('\t[+] Image {}'.format(img_name))
-            sources = get_sources(links[img_id])
-            imgs_data[img_id]['sources'] = sources
-
-        output_name = json_f.replace('data', 'sources')
-        output_file = open(os.path.join(SOURCES_FOLDER, output_name), 'w')
-
-        json.dump(imgs_data, output_file, indent=4, sort_keys=True)
-        output_file.close()
+    json.dump(imgs_data, output_file, indent=4)
+    output_file.close()
 
 
 def main():
@@ -264,7 +235,6 @@ def main():
         Main function.
     '''
 
-    init()
     collect_sources()
 
 

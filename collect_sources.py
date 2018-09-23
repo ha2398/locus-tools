@@ -205,11 +205,17 @@ def generate_links(imgs_data):
     '''
 
     links = {}
-    for img_n in range(1, args.n_images + 1):
-        if str(img_n) in imgs_data:
-            links[str(img_n)] = URL.format(imgs_data[str(img_n)]['imageID'])
-        else:
-            break
+
+    if args.n_images == 0:
+        for img_n in imgs_data:
+            links[img_n] = URL.format(imgs_data[img_n]['imageID'])
+    else:
+        for img_n in range(1, args.n_images + 1):
+            if str(img_n) in imgs_data:
+                links[str(img_n)] = URL.format(
+                    imgs_data[str(img_n)]['imageID'])
+            else:
+                break
 
     return links
 
@@ -255,7 +261,9 @@ def collect_sources():
         output_name = json_f.replace('data', 'sources')
         output_file = open(os.path.join(SOURCES_FOLDER, output_name), 'w')
 
-        json.dump(imgs_data, output_file, indent=4, sort_keys=True)
+        json.dump({int(x): imgs_data[x] for x in imgs_data.keys(
+        )}, output_file, indent=4, sort_keys=True)
+
         output_file.close()
 
 

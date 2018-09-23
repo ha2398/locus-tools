@@ -2,37 +2,21 @@
 # -*- coding: utf-8 -*-
 
 '''
-Collect sources where images have previously appeared on, for a single JSON
-file describing a set of images for a set of days.
+Collect sources where images have previously appeared on, for a set of JSON
+files describing a set of images.
 
 @author: Hugo Sousa (hugosousa@dcc.ufmg.br)
 '''
 
 
-from argparse import ArgumentParser
 from bs4 import BeautifulSoup
 from contextlib import closing
 from datetime import date, timedelta
 from time import sleep
 from random import uniform
 
-import json
 import urllib.request
 
-
-# Add command line arguments.
-parser = ArgumentParser()
-
-parser.add_argument('json_file', type=str,
-                    help='Path of the JSON file.')
-parser.add_argument('sleep_min', type=float, default=31,
-                    help='Minimum number of seconds to sleep between \
-                    requests.')
-parser.add_argument('sleep_max', type=float, default=35,
-                    help='Maximum number of seconds to sleep between \
-                    requests.')
-
-args = parser.parse_args()
 
 URL = 'http://images.google.com.br/searchbyimage?image_url=' + \
       'http://www.monitor-de-whatsapp.dcc.ufmg.br/data/images/{}'
@@ -63,11 +47,13 @@ def process_url(url):
     return url
 
 
-def get_html(url):
+def get_html(url, sleep_min, sleep_max):
     '''
         Get the HTML string corresponding to a particular URL.
 
         @url: (string) URL.
+        @sleep_min: (float) Minimum amount of seconds to sleep for.
+        @sleep_max: (float) Maximum amount of seconds to sleep for.
 
         @return: (string) HTML string.
     '''
@@ -84,7 +70,7 @@ def get_html(url):
         print(http_error, '\tURL:', url)
         exit()
 
-    slow_down()
+    slow_down(sleep_min, sleep_max)
     return html
 
 
@@ -132,11 +118,13 @@ def get_page_sources(html):
     return list(zip(links, dates))
 
 
-def get_next_page(html):
+def get_next_page(html, sleep_min, sleep_max):
     '''
         Get the HTML content for the next search result page.
 
         @html: (string) HTML content of current page.
+        @sleep_min: (float) Minimum amount of seconds to sleep for.
+        @sleep_max: (float) Maximum amount of seconds to sleep for.
 
         @return: (string) HTML content of next page.
     '''
@@ -148,29 +136,34 @@ def get_next_page(html):
         return None
 
     next_page_link = DOMAIN + next_page[0].get('href')
-    return get_html(next_page_link)
+    return get_html(next_page_link, sleep_min, sleep_max)
 
 
-def slow_down():
+def slow_down(sleep_min, sleep_max):
     '''
         Sleeps for awhile after each request, so the crawler looks slightly
         more human.
+
+        @sleep_min: (float) Minimum amount of seconds to sleep for.
+        @sleep_max: (float) Maximum amount of seconds to sleep for.
     '''
 
-    sleep(uniform(args.sleep_min, args.sleep_max))
+    sleep(uniform(sleep_min, sleep_max))
 
 
-def get_sources(url):
+def get_sources(url, sleep_min, sleep_max):
     '''
         Get all source links where the image has appeared on.
 
         @url: (string) HTML of the first result page for the image.
+        @sleep_min: (float) Minimum amount of seconds to sleep for.
+        @sleep_max: (float) Maximum amount of seconds to sleep for.
 
         @return: (string list) List of all the source links where the image has
         appeared on.
     '''
 
-    html = get_html(url)
+    html = get_html(url, sleep_min, sleep_max)
     sources = []
 
     # Only look for links where the image has appeared on.
@@ -182,7 +175,7 @@ def get_sources(url):
         page += 1
 
         sources += get_page_sources(html)
-        html = get_next_page(html)
+        html = get_next_page(html, sleep_min, sleep_max)
 
         if html is None:
             break
@@ -190,54 +183,27 @@ def get_sources(url):
     return sources
 
 
-def generate_links(imgs_data):
+def generate_links(imgs_data, n_images):
     '''
         Generate Google Search by Image links.
 
         @imgs_data: (dict) JSON dict with images data.
+        @n_images: (int) Number of top images to analyze.
 
-        @return: (string list) List with the Google Search by Image links.
+        @return: (dict) Dict with the Google Search by Image links.
     '''
 
     links = {}
-    for img_n in imgs_data:
-        links[str(img_n)] = URL.format(imgs_data[str(img_n)]['imageID'])
+
+    if n_images == 0:
+        for img_n in imgs_data:
+            links[img_n] = URL.format(imgs_data[img_n]['imageID'])
+    else:
+        for img_n in range(1, n_images + 1):
+            if str(img_n) in imgs_data:
+                links[str(img_n)] = URL.format(
+                    imgs_data[str(img_n)]['imageID'])
+            else:
+                break
 
     return links
-
-
-def collect_sources():
-    '''
-        Collect sources where images have previously appeared on.
-    '''
-
-    print('[+] File {}'.format(args.json_file))
-    json_file = open(args.json_file, 'r')
-    imgs_data = json.load(json_file)
-    json_file.close()
-    links = generate_links(imgs_data)
-
-    for img_id in links:
-        img_name = imgs_data[img_id]['imageID']
-        print('\t[+] Image {}'.format(img_name))
-        sources = get_sources(links[img_id])
-        imgs_data[img_id]['sources'] = sources
-
-    output_name = args.json_file[:args.json_file.find('.')] + '_sources.json'
-    output_file = open(output_name, 'w')
-
-    json.dump({int(x): imgs_data[x] for x in imgs_data.keys(
-    )}, output_file, indent=4, sort_keys=True)
-
-    output_file.close()
-
-
-def main():
-    '''
-        Main function.
-    '''
-
-    collect_sources()
-
-
-main()

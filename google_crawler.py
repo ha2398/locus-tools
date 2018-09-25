@@ -183,27 +183,18 @@ def get_sources(url, sleep_min, sleep_max):
     return sources
 
 
-def generate_links(imgs_data, n_images):
+def generate_links(imgs_data):
     '''
         Generate Google Search by Image links.
 
         @imgs_data: (dict) JSON dict with images data.
-        @n_images: (int) Number of top images to analyze.
 
         @return: (dict) Dict with the Google Search by Image links.
     '''
 
     links = {}
 
-    if n_images == 0:
-        for img_n in imgs_data:
-            links[img_n] = URL.format(imgs_data[img_n]['imageID'])
-    else:
-        for img_n in range(1, n_images + 1):
-            if str(img_n) in imgs_data:
-                links[str(img_n)] = URL.format(
-                    imgs_data[str(img_n)]['imageID'])
-            else:
-                break
+    for img_n in imgs_data:
+        links[img_n] = URL.format(imgs_data[img_n]['imageID'])
 
     return links

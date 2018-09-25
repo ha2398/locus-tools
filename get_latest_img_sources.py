@@ -21,6 +21,9 @@ parser = ArgumentParser()
 
 parser.add_argument('-d', type=int, default=3,
                     help='Gap, in days, between today and the collected day.')
+parser.add_argument('-s', type=int, default=2,
+                    help='Minimum share number of the images to collect '
+                    'sources for.')
 parser.add_argument('-p', type=int, default=10,
                     help='Max number of search result pages per image.')
 parser.add_argument('-min', type=float, default=31,
@@ -90,14 +93,14 @@ def main():
 
     with open(input_filename, 'r') as input_file:  # Input file
         imgs_data = load(input_file)
-        links = gc.generate_links(imgs_data, 0)
+        links = gc.generate_links(imgs_data)
 
         for img_id in links:
             img_name = imgs_data[img_id]['imageID']
             log.write('[+] Image{}\n'.format(img_name))
             log.flush()
 
-            if imgs_data[img_id]['shareNumber'] > 1:
+            if imgs_data[img_id]['shareNumber'] >= args.s:
                 sources = get_sources(links[img_id], log)
                 imgs_data[img_id]['sources'] = sources
 

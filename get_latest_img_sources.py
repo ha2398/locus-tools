@@ -19,6 +19,8 @@ import google_crawler as gc
 # Add command line arguments.
 parser = ArgumentParser()
 
+parser.add_argument('-d', type=int, default=3,
+                    help='Gap, in days, between today and the collected day.')
 parser.add_argument('-p', type=int, default=10,
                     help='Max number of search result pages per image.')
 parser.add_argument('-min', type=float, default=31,
@@ -40,7 +42,7 @@ LOG_NAME = 'collect_latest.log'
 
 
 def get_today_filename():
-    yesterday = datetime.today() - timedelta(days=1)
+    yesterday = datetime.today() - timedelta(days=args.d)
     month = MONTHS[yesterday.month]
     day = yesterday.day
     return 'images_data_{}{}_Final.json'.format(month, day)

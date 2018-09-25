@@ -46,11 +46,12 @@ def get_today_filename():
     return 'images_data_{}{}_Final.json'.format(month, day)
 
 
-def get_sources(url):
+def get_sources(url, log):
     '''
         Get all source links where the image has appeared on.
 
         @url: (string) HTML of the first result page for the image.
+        @log: (file) Log file.
 
         @return: (string list) List of all the source links where the image has
         appeared on.
@@ -64,7 +65,7 @@ def get_sources(url):
 
     page = 1
     while True:  # Look for other sources in the rest of the result pages.
-        print('\t[+] Search result page {}'.format(page))
+        log.write('\t[+] Search result page {}\n'.format(page))
         page += 1
 
         if page > args.p:
@@ -80,6 +81,8 @@ def get_sources(url):
 
 
 def main():
+    log = open(LOG_NAME, 'w')
+
     today_filename = get_today_filename()
     input_filename = ROOT_FOLDER + today_filename
 
@@ -89,12 +92,14 @@ def main():
 
         for img_id in links:
             img_name = imgs_data[img_id]['imageID']
-            print('[+] Image{}'.format(img_name))
+            log.write('[+] Image{}\n'.format(img_name))
+            log.flush()
 
             if imgs_data[img_id]['shareNumber'] > 1:
-                sources = get_sources(links[img_id])
+                sources = get_sources(links[img_id], log)
                 imgs_data[img_id]['sources'] = sources
 
+    log.close()
     output_name = OUTPUT_FOLDER + today_filename
 
     with open(output_name, 'w') as output:

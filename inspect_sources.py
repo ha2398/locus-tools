@@ -9,6 +9,7 @@ Run analyses on collected image sources.
 
 from argparse import ArgumentParser
 from tldextract import extract
+from urlparse import urlparse
 
 import json
 import os
@@ -19,6 +20,9 @@ parser = ArgumentParser()
 
 parser.add_argument('json_folder', type=str,
                     help='Path of the folder that contains the JSON files.')
+parser.add_argument('--c', action='store_true',
+                    help='Indicates if the JSON file was generated from a '
+                    'CSV file with image data.')
 
 args = parser.parse_args()
 
@@ -36,17 +40,27 @@ def get_files():
 def main():
     json_filenames = get_files()
     source_freq = {}
+    sites = {}
 
     for filename in json_filenames:
         json_file = open(filename, 'r')
         data = json.load(json_file)
 
         for img_id in data:
-            if 'sources' not in data[img_id]:
+            if not args.c and 'sources' not in data[img_id]:
                 continue
 
-            for source, date in data[img_id]['sources']:
+            source_data = data[img_id] if args.c else data[img_id]['sources']
+
+            for source, date in source_data:
                 domain = extract(source).domain
+                netloc = str(urlparse(source).netloc)
+
+                if domain not in sites:
+                    sites[domain] = [netloc]
+                elif netloc not in sites[domain]:
+                    sites[domain].append(netloc)
+
                 source_freq[domain] = source_freq.get(domain, 0) + 1
 
         json_file.close()
@@ -54,9 +68,9 @@ def main():
     source_freq_list = sorted(
         ((v, k) for k, v in source_freq.items()), reverse=True)
 
-    print('FREQUENCY\tDOMAIN')
+    print('FREQUENCY\tDOMAIN\tWEBSITES')
     for pair in source_freq_list:
-        print('{}\t{}'.format(pair[0], pair[1]))
+        print('{}\t{}\t{}'.format(pair[0], pair[1], sites[pair[1]]))
 
 
 main()

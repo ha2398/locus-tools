@@ -18,6 +18,7 @@ from random import uniform
 import urllib.request
 
 
+TIME_PARAM = '%2Ccdr%3A1%2Ccd_min%3A1%2F1%2F0%2Ccd_max%3A&tbm='
 URL = 'http://images.google.com.br/searchbyimage?image_url=' + \
       'http://www.monitor-de-whatsapp.dcc.ufmg.br/data/images/{}'
 
@@ -47,13 +48,14 @@ def process_url(url):
     return url
 
 
-def get_html(url, sleep_min, sleep_max):
+def get_html(url, sleep_min, sleep_max, redirect=False):
     '''
         Get the HTML string corresponding to a particular URL.
 
         @url: (string) URL.
         @sleep_min: (float) Minimum amount of seconds to sleep for.
         @sleep_max: (float) Maximum amount of seconds to sleep for.
+        @redirect: (bool) Indicates whether the param url will be redirected.
 
         @return: (string) HTML string.
     '''
@@ -62,6 +64,13 @@ def get_html(url, sleep_min, sleep_max):
     headers = [('User-Agent', USER_AGENT)]
     opener = urllib.request.build_opener()
     opener.addheaders = headers
+
+    if redirect:
+        with closing(opener.open(url)) as open_url:
+            redirect_url = open_url.url
+            new_url = ''.join(redirect_url.split('&')[:-1]) + TIME_PARAM
+            url = process_url(new_url)
+            slow_down(sleep_min, sleep_max)
 
     try:
         with closing(opener.open(url)) as open_url:
@@ -111,9 +120,19 @@ def get_page_sources(html):
 
     links = [link.a.get('href')
              for link in soup.find_all('h3', {'class': 'r'})]
+
     dates = [parse_date(date.span.string.split(' - ')[1])
              if date.span is not None else ''
              for date in soup.find_all('span', {'class': 'st'})]
+
+    other_dates = [parse_date(date.string.split(' - ')[0])
+                   for date in soup.find_all('div', {'class': 'slp f'})]
+
+    i = 0
+    for date in range(len(dates)):
+        if dates[date] == '':
+            dates[date] = other_dates[i]
+            i += 1
 
     return list(zip(links, dates))
 
@@ -163,7 +182,7 @@ def get_sources(url, sleep_min, sleep_max):
         appeared on.
     '''
 
-    html = get_html(url, sleep_min, sleep_max)
+    html = get_html(url, sleep_min, sleep_max, True)
     sources = []
 
     # Only look for links where the image has appeared on.

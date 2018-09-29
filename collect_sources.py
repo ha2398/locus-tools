@@ -24,6 +24,8 @@ parser.add_argument('json_folder', type=str,
 parser.add_argument('min_share', type=int,
                     help='Minimum share number of the images to collect '
                     'sources for.')
+parser.add_argument('pages', type=int,
+                    help='Number of search result pages to go through.')
 parser.add_argument('sleep_min', type=float,
                     help='Minimum number of seconds to sleep between \
                     requests.')
@@ -84,12 +86,14 @@ def collect_sources():
         for img_id in links:
             img_name = imgs_data[img_id]['imageID']
             print('\t[+] Image {}'.format(img_name))
-            sources = gc.get_sources(
-                links[img_id], args.sleep_min, args.sleep_max)
-            imgs_data[img_id]['sources'] = sources
 
-            fact_checked = gc.is_fact_checked(sources)
-            imgs_data[img_id]['fact_checked'] = fact_checked
+            if imgs_data[img_id]['shareNumber'] >= args.min_share:
+                sources = gc.get_sources(
+                    links[img_id], args.sleep_min, args.sleep_max, args.pages)
+                imgs_data[img_id]['sources'] = sources
+
+                fact_checked = gc.is_fact_checked(sources)
+                imgs_data[img_id]['fact_checked'] = fact_checked
 
         output_name = json_f.replace('data', 'sources')
         output_file = open(os.path.join(SOURCES_FOLDER, output_name), 'w')

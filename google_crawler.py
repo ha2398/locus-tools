@@ -181,13 +181,14 @@ def slow_down(sleep_min, sleep_max):
     sleep(uniform(sleep_min, sleep_max))
 
 
-def get_sources(url, sleep_min, sleep_max):
+def get_sources(url, sleep_min, sleep_max, pages):
     '''
         Get all source links where the image has appeared on.
 
         @url: (string) HTML of the first result page for the image.
         @sleep_min: (float) Minimum amount of seconds to sleep for.
         @sleep_max: (float) Maximum amount of seconds to sleep for.
+        @pages: (int) Number of search result pages to go through.
 
         @return: ((string, string) list) List of all the source links where
             the image has appeared on.
@@ -203,6 +204,9 @@ def get_sources(url, sleep_min, sleep_max):
     while True:  # Look for other sources in the rest of the result pages.
         print('\t\t[+] Search result page {}'.format(page))
         page += 1
+
+        if page > pages:
+            break
 
         sources += get_page_sources(html)
         html = get_next_page(html, sleep_min, sleep_max)

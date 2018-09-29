@@ -88,6 +88,9 @@ def collect_sources():
                 links[img_id], args.sleep_min, args.sleep_max)
             imgs_data[img_id]['sources'] = sources
 
+            fact_checked = gc.is_fact_checked(sources)
+            imgs_data[img_id]['fact_checked'] = fact_checked
+
         output_name = json_f.replace('data', 'sources')
         output_file = open(os.path.join(SOURCES_FOLDER, output_name), 'w')
 

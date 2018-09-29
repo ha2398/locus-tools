@@ -97,12 +97,14 @@ def main():
 
         for img_id in links:
             img_name = imgs_data[img_id]['imageID']
-            log.write('[+] Image{}\n'.format(img_name))
+            log.write('[+] Image {}\n'.format(img_name))
             log.flush()
 
             if imgs_data[img_id]['shareNumber'] >= args.s:
                 sources = get_sources(links[img_id], log)
+                fact_checked = gc.is_fact_checked(sources)
                 imgs_data[img_id]['sources'] = sources
+                imgs_data[img_id]['fact_checked'] = fact_checked
 
     log.close()
     output_name = OUTPUT_FOLDER + today_filename

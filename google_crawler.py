@@ -17,6 +17,11 @@ from random import uniform
 
 import urllib.request
 
+FACT_CHECKERS = ['boatos.org', 'e-farsas.com', 'g1.globo.com/e-ou-nao-e',
+                 'piaui.folha.uol.com.br/lupa', 'g1.globo.com/fato-ou-fake'
+                 'veja.abril.com.br/blog/me-engana-que-eu-posto',
+                 'aosfatos.org', ]
+
 
 TIME_PARAM = '%2Ccdr%3A1%2Ccd_min%3A1%2F1%2F0%2Ccd_max%3A&tbm='
 URL = 'http://images.google.com.br/searchbyimage?image_url=' + \
@@ -125,14 +130,20 @@ def get_page_sources(html):
              if date.span is not None else ''
              for date in soup.find_all('span', {'class': 'st'})]
 
-    other_dates = [parse_date(date.string.split(' - ')[0])
+    forum_dates = [parse_date(date.string.split(' - ')[0])
+                   if date is not None else ''
                    for date in soup.find_all('div', {'class': 'slp f'})]
 
-    i = 0
-    for date in range(len(dates)):
-        if dates[date] == '':
-            dates[date] = other_dates[i]
-            i += 1
+    if len(forum_dates) > 0:
+        boxes = soup.find_all('div', {'class': 'rc'})
+        indexes = [True if b.find_all('div', {'class': 'slp f'}) else False
+                   for b in boxes]
+
+        index = 0
+        for i, b in enumerate(indexes):
+            if b:
+                dates[i] = forum_dates[index]
+                index += 1
 
     return list(zip(links, dates))
 
@@ -178,8 +189,8 @@ def get_sources(url, sleep_min, sleep_max):
         @sleep_min: (float) Minimum amount of seconds to sleep for.
         @sleep_max: (float) Maximum amount of seconds to sleep for.
 
-        @return: (string list) List of all the source links where the image has
-        appeared on.
+        @return: ((string, string) list) List of all the source links where
+            the image has appeared on.
     '''
 
     html = get_html(url, sleep_min, sleep_max, True)
@@ -217,3 +228,17 @@ def generate_links(imgs_data):
         links[img_n] = URL.format(imgs_data[img_n]['imageID'])
 
     return links
+
+
+def is_fact_checked(sources):
+    '''
+        Checks if a particular image was fact checked.
+
+        @sources: ((string, string) list) List of all the source links where
+            the image has appeared on.
+
+        @return: (bool) True, iff, the image was fact checked.
+    '''
+
+    links = set([s[0] for s in sources])
+    return any(f in l for f in FACT_CHECKERS for l in links)

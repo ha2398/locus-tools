@@ -111,7 +111,11 @@ def parse_date(raw_date):
         return ''
 
 
+a = 1
+
+
 def get_page_sources(html):
+    global a
     '''
         Get image sources on a particular page.
 
@@ -123,29 +127,29 @@ def get_page_sources(html):
     soup = BeautifulSoup(html, 'html.parser')
 
     links = [link.a.get('href')
-             for link in soup.find_all('h3', {'class': 'r'})]
+             for link in soup.find_all(['div', 'h3'], {'class': 'r'})]
 
     dates = [parse_date(date.span.string.split(' - ')[1])
              if date.span is not None else ''
              for date in soup.find_all('span', {'class': 'st'})]
 
-    forum_dates = soup.find_all('div', {'class': 'slp f'})
+    if len(links) != len(dates):
+        forum_dates = soup.find_all('div', {'class': 'slp f'})
 
-    if forum_dates:
-        forum_dates = [parse_date(date.string.split(' - ')[0])
-                       if date is not None else ''
-                       for date in forum_dates]
+        if len(forum_dates) > 0:
+            forum_dates = [parse_date(date.string.split(' - ')[0])
+                           if date is not None else ''
+                           for date in forum_dates]
 
-    if len(forum_dates) > 0:
-        boxes = soup.find_all('div', {'class': 'rc'})
-        indexes = [True if b.find_all('div', {'class': 'slp f'}) else False
-                   for b in boxes]
+            boxes = soup.find_all('div', {'class': 'rc'})
+            indexes = [True if b.find_all('div', {'class': 'slp f'}) else False
+                       for b in boxes]
 
-        index = 0
-        for i, b in enumerate(indexes):
-            if b:
-                dates[i] = forum_dates[index]
-                index += 1
+            index = 0
+            for i, b in enumerate(indexes):
+                if b and dates[i] == '':
+                    dates[i] = forum_dates[index]
+                    index += 1
 
     return list(zip(links, dates))
 

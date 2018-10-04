@@ -48,7 +48,7 @@ def get_today_filename():
     yesterday = datetime.today() - timedelta(days=args.d)
     month = MONTHS[yesterday.month]
     day = yesterday.day
-    return 'images_data_{}{}_Final.json'.format(month, day)
+    return 'images_data_{}{:02}_Final.json'.format(month, day)
 
 
 def get_sources(url, log):

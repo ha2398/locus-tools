@@ -28,8 +28,7 @@ URL = 'http://images.google.com.br/searchbyimage?image_url=' + \
 
 DOMAIN = 'www.google.com.br'
 
-USER_AGENT = '''Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 \
-(KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36'''
+USER_AGENT = '''Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.81 Safari/537.36'''
 
 MONTHS = {y: (x + 1) for (x, y) in enumerate(['jan', 'fev', 'mar',
                                               'abr', 'mai', 'jun',

@@ -37,18 +37,6 @@ args = parser.parse_args()
 
 SOURCES_FOLDER = os.path.join(args.json_folder, 'sources')
 
-URL = 'http://images.google.com.br/searchbyimage?image_url=' + \
-      'http://www.monitor-de-whatsapp.dcc.ufmg.br/data/images/{}'
-
-DOMAIN = 'www.google.com.br'
-
-USER_AGENT = '''Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.81 Safari/537.36'''
-
-MONTHS = {y: (x + 1) for (x, y) in enumerate(['jan', 'fev', 'mar',
-                                              'abr', 'mai', 'jun',
-                                              'jul', 'ago', 'set',
-                                              'out', 'nov', 'dez'])}
-
 
 def init():
     '''

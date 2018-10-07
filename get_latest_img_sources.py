@@ -62,7 +62,7 @@ def get_sources(url, log):
         appeared on.
     '''
 
-    html = gc.get_html(url, args.min, args.max)
+    html = gc.get_html(url, args.min, args.max, True)
     sources = []
 
     # Only look for links where the image has appeared on.

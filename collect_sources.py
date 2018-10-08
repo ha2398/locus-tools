@@ -82,8 +82,7 @@ def collect_sources():
                 fact_checked = gc.is_fact_checked(sources)
                 imgs_data[img_id]['fact_checked'] = fact_checked
 
-        output_name = json_f.replace('data', 'sources')
-        output_file = open(os.path.join(SOURCES_FOLDER, output_name), 'w')
+        output_file = open(os.path.join(SOURCES_FOLDER, json_f), 'w')
 
         json.dump({int(x): imgs_data[x] for x in imgs_data.keys(
         )}, output_file, indent=4, sort_keys=True)

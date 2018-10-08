@@ -79,8 +79,9 @@ def get_html(url, sleep_min, sleep_max, redirect=False):
                     url = process_url(new_url)
                     slow_down(sleep_min, sleep_max)
                     break
-            except Exception:
+            except:
                 print('\t\t[-] Exception occurred, retrying.')
+                slow_down(sleep_min, sleep_max)
                 continue
 
     while True:
@@ -89,8 +90,8 @@ def get_html(url, sleep_min, sleep_max, redirect=False):
                 html = open_url.read().decode()
                 slow_down(sleep_min, sleep_max)
                 break
-        except urllib.error.HTTPError as http_error:
-            print(http_error, '\tURL:', url)
+        except:
+            print('\t\t[-] Exception occurred, retrying.')
             slow_down(sleep_min, sleep_max)
             continue
 
@@ -139,7 +140,7 @@ def get_page_sources(html):
              if date.span is not None else ''
              for date in soup.find_all('span', {'class': 'st'})]
 
-    if len(links) != len(dates):
+    if len(links) != len(dates) - dates.count(''):
         forum_dates = soup.find_all('div', {'class': 'slp f'})
 
         if len(forum_dates) > 0:

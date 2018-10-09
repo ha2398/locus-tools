@@ -2,8 +2,7 @@
 # -*- coding: utf-8 -*-
 
 '''
-Collect sources where images have previously appeared on, for a set of JSON
-files describing a set of images.
+Fact check images according to their sources.
 
 @author: Hugo Sousa (hugosousa@dcc.ufmg.br)
 '''
@@ -21,11 +20,6 @@ parser = ArgumentParser()
 
 parser.add_argument('json_folder', type=str,
                     help='Path of the folder that contains the JSON files.')
-parser.add_argument('min_share', type=int,
-                    help='Minimum share number of the images to collect '
-                    'sources for.')
-parser.add_argument('pages', type=int,
-                    help='Number of search result pages to go through.')
 parser.add_argument('sleep_min', type=float,
                     help='Minimum number of seconds to sleep between \
                     requests.')
@@ -35,7 +29,7 @@ parser.add_argument('sleep_max', type=float,
 
 args = parser.parse_args()
 
-SOURCES_FOLDER = os.path.join(args.json_folder, 'sources')
+CHECK_FOLDER = os.path.join(args.json_folder, 'fact_checks')
 
 
 def init():
@@ -43,13 +37,13 @@ def init():
         Initialize script.
     '''
 
-    if not os.path.exists(SOURCES_FOLDER):
-        os.makedirs(SOURCES_FOLDER)
+    if not os.path.exists(CHECK_FOLDER):
+        os.makedirs(CHECK_FOLDER)
 
 
-def collect_sources():
+def check():
     '''
-        Collect sources where images have previously appeared on.
+        Fact check images.
     '''
 
     # Get input files.
@@ -59,7 +53,7 @@ def collect_sources():
             if json_f.endswith('.json'):
                 json_filenames.append(json_f)
 
-    # Generate sources.
+    # Fact check.
     for json_f in sorted(json_filenames):
         print('[+] File {}'.format(json_f))
         json_f_path = os.path.join(args.json_folder, json_f)
@@ -68,25 +62,16 @@ def collect_sources():
         imgs_data = json.load(json_file)
         json_file.close()
 
-        links = gc.generate_links(imgs_data)
-
-        for img_id in links:
+        for img_id in imgs_data:
             img_name = imgs_data[img_id]['imageID']
             print('\t[+] Image {}'.format(img_name))
 
-            if imgs_data[img_id]['shareNumber'] >= args.min_share:
-                sources = gc.get_sources(
-                    links[img_id], args.sleep_min, args.sleep_max, args.pages)
-                imgs_data[img_id]['sources'] = sources
+            if imgs_data[img_id].get('fact_checked'):
+                sources = imgs_data[img_id]['sources']
+                imgs_data[img_id]['fact_check'] = gc.get_fact_check(
+                    sources, args.sleep_min, args.sleep_max)
 
-                fact_checked = gc.is_fact_checked(sources)
-                imgs_data[img_id]['fact_checked'] = fact_checked
-
-                if fact_checked:
-                    imgs_data[img_id]['fact_check'] = gc.get_fact_check(
-                        sources, args.sleep_min, args.sleep_max)
-
-        output_file = open(os.path.join(SOURCES_FOLDER, json_f), 'w')
+        output_file = open(os.path.join(CHECK_FOLDER, json_f), 'w')
 
         json.dump({int(x): imgs_data[x] for x in imgs_data.keys(
         )}, output_file, indent=4, sort_keys=True)
@@ -100,7 +85,7 @@ def main():
     '''
 
     init()
-    collect_sources()
+    check()
 
 
 main()

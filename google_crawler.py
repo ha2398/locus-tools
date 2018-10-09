@@ -22,6 +22,8 @@ FACT_CHECKERS = ['boatos.org', 'e-farsas.com', 'g1.globo.com/e-ou-nao-e',
                  'veja.abril.com.br/blog/me-engana-que-eu-posto',
                  'aosfatos.org']
 
+FACT_CHECK_HISTORY = {}
+
 TIME_PARAM = '%2Ccdr%3A1%2Ccd_min%3A1%2F1%2F0%2Ccd_max%3A&tbm='
 URL = 'http://images.google.com.br/searchbyimage?image_url=' + \
       'http://www.monitor-de-whatsapp.dcc.ufmg.br/data/images/{}'
@@ -90,6 +92,10 @@ def get_html(url, sleep_min, sleep_max, redirect=False):
                 html = open_url.read().decode()
                 slow_down(sleep_min, sleep_max)
                 break
+        except UnicodeDecodeError:
+            print('\t\t[-] Decoding error, malformed page.')
+            slow_down(sleep_min, sleep_max)
+            return ''
         except:
             print('\t\t[-] Exception occurred, retrying.')
             slow_down(sleep_min, sleep_max)
@@ -283,7 +289,7 @@ def check_boatos(link, sleep_min, sleep_max):
 
     # In case it's not root
     html = get_html(link, sleep_min, sleep_max)
-    return '#boato' in html
+    return not ('#boato' in html)
 
 
 def check_efarsas(link, sleep_min, sleep_max):
@@ -306,15 +312,17 @@ def check_efarsas(link, sleep_min, sleep_max):
             if split[1] == '' or split[1] == 'blog':
                 return None
 
+    if 'e-farsas.com/secoes' in link:
+        return None
+
     html = get_html(link, sleep_min, sleep_max)
     soup = BeautifulSoup(html, 'html.parser')
     title = soup.find_all('span', {'class': 'mvp-post-cat left'})
 
     if len(title) > 0:
         tag = title[0].string.lower()
-        return tag == 'falso'
+        return not (tag == 'falso')
 
-    # tags = [a.string for a in soup.find_all('a', {'rel': 'tag'})]
     return None
 
 
@@ -372,17 +380,77 @@ def check_lupa(link, sleep_min, sleep_max):
     post = soup.find_all('div', {'class': 'post-inner'})
 
     if len(post) > 0:
+        post = post[0]
         tag_false = post.find_all('div', {'class': 'etiqueta etiqueta-7'})
         tag_true = post.find_all(
             'div', {'class': ['etiqueta etiqueta-1', 'etiqueta etiqueta-2']})
 
-        if len(tag_false) > 0:
-            return False
-
-        if len(tag_true) > 0:
-            return True
+        return len(tag_true) > len(tag_false)
 
     return None
+
+
+def check_fato_ou_fake(link, sleep_min, sleep_max):
+    '''
+        Check G1 Fato ou Fake judgment about a content.
+
+        @link: (string) Link to content.
+        @sleep_min: (float) Minimum amount of seconds to sleep for.
+        @sleep_max: (float) Maximum amount of seconds to sleep for.
+
+        @return: (bool) True iff the content was considered true.
+    '''
+
+    # Check if link is root.
+    split = link.split('//')
+    if len(split) >= 2:
+        split = split[1].split('/')
+
+        if len(split) <= 2:
+            return None
+
+    html = get_html(link, sleep_min, sleep_max)
+    soup = BeautifulSoup(html, 'html.parser')
+    title = soup.find_all('h1', {'class': 'content-head__title'})
+
+    if len(title) > 0:
+        title = title[0].string.lower()
+
+        if '#FATO' in title:
+            return True
+        elif '#FAKE' in title:
+            return False
+
+    return None
+
+
+def check_aos_fatos(link, sleep_min, sleep_max):
+    '''
+        Check Aos Fatos judgment about a content.
+
+        @link: (string) Link to content.
+        @sleep_min: (float) Minimum amount of seconds to sleep for.
+        @sleep_max: (float) Maximum amount of seconds to sleep for.
+
+        @return: (bool) True iff the content was considered true.
+    '''
+
+    # Check if link is root or blog.
+    split = link.split('//')
+    if len(split) >= 2:
+        split = split[1].split('/')
+
+        if len(split) >= 2:
+            if split[1] == '':
+                return None
+
+    html = get_html(link, sleep_min, sleep_max)
+    soup = BeautifulSoup(html, 'html.parser')
+    tags = [cap.string.lower()
+            if cap.string is not None else None
+            for cap in soup.find_all('figcaption')]
+
+    return tags.count('verdadeiro') > tags.count('falso')
 
 
 def get_fact_check(sources, sleep_min, sleep_max):
@@ -398,31 +466,29 @@ def get_fact_check(sources, sleep_min, sleep_max):
             judgment.
     '''
 
-    fact_checks = {f: None for f in FACT_CHECKERS}
+    global FACT_CHECK_HISTORY
 
-    for source, source_date in sources:
-        if source_date == '':
-            continue
+    fact_checks = {}
+    check_functions = {
+        'boatos.org': check_boatos,
+        'e-farsas.com': check_efarsas,
+        'g1.globo.com/e-ou-nao-e': check_e_ou_nao_e,
+        'piaui.folha.uol.com.br/lupa': check_lupa,
+        'g1.globo.com/fato-ou-fake': check_fato_ou_fake,
+        'aosfatos.org': check_aos_fatos
+    }
 
+    for source, _ in sources:
         if any(f in source for f in FACT_CHECKERS):  # Fact checker link
-            f = 'boatos.org'  # Boatos
-            if f in source and fact_checks[f] is not True:
-                fact_checks[f] = check_boatos(source, sleep_min, sleep_max)
-                continue
+            for f in check_functions:
+                if f in source and fact_checks.get(f, None) is None:
+                    if source in FACT_CHECK_HISTORY:
+                        fact_checks[f] = FACT_CHECK_HISTORY[source]
+                    else:
+                        fact_checks[f] = check_functions[f](
+                            source, sleep_min, sleep_max)
+                        FACT_CHECK_HISTORY[source] = fact_checks[f]
 
-            f = 'e-farsas.com'  # E-Farsas
-            if f in source and fact_checks[f] is not True:
-                fact_checks[f] = check_efarsas(source, sleep_min, sleep_max)
-                continue
-
-            f = 'g1.globo.com/e-ou-nao-e'  # É ou não é?
-            if f in source and fact_checks[f] is not True:
-                fact_checks[f] = check_e_ou_nao_e(source, sleep_min, sleep_max)
-                continue
-
-            f = 'piaui.folha.uol.com.br/lupa'  # Lupa
-            if f in source and fact_checks[f] is not True:
-                fact_checks[f] = check_lupa(source, sleep_min, sleep_max)
-                continue
+                    continue
 
     return fact_checks

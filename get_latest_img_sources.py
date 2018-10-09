@@ -106,6 +106,10 @@ def main():
                 imgs_data[img_id]['sources'] = sources
                 imgs_data[img_id]['fact_checked'] = fact_checked
 
+                if fact_checked:
+                    imgs_data[img_id]['fact_check'] = gc.get_fact_check(
+                        sources, args.min, args.max)
+
     log.close()
     output_name = OUTPUT_FOLDER + today_filename
 

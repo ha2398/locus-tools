@@ -14,6 +14,7 @@ from contextlib import closing
 from datetime import date, timedelta
 from time import sleep
 from random import uniform
+from zlib import decompress, MAX_WBITS
 
 import urllib.request
 
@@ -89,11 +90,12 @@ def get_html(url, sleep_min, sleep_max, redirect=False):
     while True:
         try:
             with closing(opener.open(url)) as open_url:
-                html = open_url.read().decode()
+                data = open_url.read()
+                html = data.decode()
                 slow_down(sleep_min, sleep_max)
                 break
         except UnicodeDecodeError:
-            print('\t\t[-] Decoding error, malformed page.')
+            html = decompress(data, 16 + MAX_WBITS)
             slow_down(sleep_min, sleep_max)
             return ''
         except:
@@ -351,7 +353,7 @@ def check_e_ou_nao_e(link, sleep_min, sleep_max):
 
     if len(title) > 0:
         title = title[0].string.lower()
-        return 'É verdade!' in title
+        return 'é verdade!' in title
 
     return None
 
@@ -416,9 +418,9 @@ def check_fato_ou_fake(link, sleep_min, sleep_max):
     if len(title) > 0:
         title = title[0].string.lower()
 
-        if '#FATO' in title:
+        if '#fato' in title:
             return True
-        elif '#FAKE' in title:
+        elif '#fake' in title:
             return False
 
     return None
@@ -479,16 +481,16 @@ def get_fact_check(sources, sleep_min, sleep_max):
     }
 
     for source, _ in sources:
-        if any(f in source for f in FACT_CHECKERS):  # Fact checker link
-            for f in check_functions:
-                if f in source and fact_checks.get(f, None) is None:
-                    if source in FACT_CHECK_HISTORY:
-                        fact_checks[f] = FACT_CHECK_HISTORY[source]
-                    else:
-                        fact_checks[f] = check_functions[f](
-                            source, sleep_min, sleep_max)
-                        FACT_CHECK_HISTORY[source] = fact_checks[f]
+        for f in check_functions:
+            if f in source and fact_checks.get(f, None) is None:
+                print('Fact checker:', f)
+                if source in FACT_CHECK_HISTORY:
+                    fact_checks[f] = FACT_CHECK_HISTORY[source]
+                else:
+                    fact_checks[f] = check_functions[f](
+                        source, sleep_min, sleep_max)
+                    FACT_CHECK_HISTORY[source] = fact_checks[f]
 
-                    continue
+                continue
 
     return fact_checks

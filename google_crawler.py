@@ -10,6 +10,7 @@ files describing a set of images.
 
 
 from bs4 import BeautifulSoup
+from cgi import parse_header
 from contextlib import closing
 from datetime import date, timedelta
 from time import sleep
@@ -19,7 +20,8 @@ from zlib import decompress, MAX_WBITS
 import urllib.request
 
 FACT_CHECKERS = ['boatos.org', 'e-farsas.com', 'g1.globo.com/e-ou-nao-e',
-                 'piaui.folha.uol.com.br/lupa', 'g1.globo.com/fato-ou-fake'
+                 'piaui.folha.uol.com.br/lupa', 'g1.globo.com/fato-ou-fake',
+                 'oglobo.globo.com/fato-ou-fake',
                  'veja.abril.com.br/blog/me-engana-que-eu-posto',
                  'aosfatos.org']
 
@@ -95,8 +97,24 @@ def get_html(url, sleep_min, sleep_max, redirect=False):
                 slow_down(sleep_min, sleep_max)
                 break
         except UnicodeDecodeError:
-            html = decompress(data, 16 + MAX_WBITS)
-            slow_down(sleep_min, sleep_max)
+            with closing(opener.open(url)) as open_url:
+                content_type = open_url.getheader('Content-Type')
+                content_encoding = open_url.getheader('Content-Encoding')
+                data = open_url.read()
+
+                # Try to decompress content.
+                if content_encoding is not None and 'gzip' in content_encoding:
+                    html = decompress(data, 16 + MAX_WBITS)
+                    slow_down(sleep_min, sleep_max)
+                    break
+
+                # Try to guess encoding.
+                if content_type is not None and 'charset' in content_type:
+                    charset = content_type.split('charset=')[1]
+                    html = data.decode(charset)
+                    slow_down(sleep_min, sleep_max)
+                    break
+
             return ''
         except:
             print('\t\t[-] Exception occurred, retrying.')
@@ -145,7 +163,7 @@ def get_page_sources(html):
              for link in soup.find_all(['div', 'h3'], {'class': 'r'})]
 
     dates = [parse_date(date.span.string.split(' - ')[1])
-             if date.span is not None else ''
+             if date.span is not None and date.span.string is not None else ''
              for date in soup.find_all('span', {'class': 'st'})]
 
     if len(links) != len(dates) - dates.count(''):
@@ -153,7 +171,7 @@ def get_page_sources(html):
 
         if len(forum_dates) > 0:
             forum_dates = [parse_date(date.string.split(' - ')[0])
-                           if date is not None else ''
+                           if date is not None and date.string is not None else ''
                            for date in forum_dates]
 
             boxes = soup.find_all('div', {'class': 'rc'})
@@ -286,12 +304,19 @@ def check_boatos(link, sleep_min, sleep_max):
         split = split[1].split('/')
 
         if len(split) >= 2:
-            if split[1] == '':
+            if split[1] == '' or split[1] == 'wp-content':
+                return None
+
+            if 'boatos.org' not in split[0]:
                 return None
 
     # In case it's not root
     html = get_html(link, sleep_min, sleep_max)
-    return not ('#boato' in html)
+
+    if '#boato' in html:
+        return False
+
+    return None
 
 
 def check_efarsas(link, sleep_min, sleep_max):
@@ -323,7 +348,9 @@ def check_efarsas(link, sleep_min, sleep_max):
 
     if len(title) > 0:
         tag = title[0].string.lower()
-        return not (tag == 'falso')
+
+        if tag == 'falso':
+            return False
 
     return None
 
@@ -413,12 +440,18 @@ def check_fato_ou_fake(link, sleep_min, sleep_max):
 
     html = get_html(link, sleep_min, sleep_max)
     soup = BeautifulSoup(html, 'html.parser')
-    title = soup.find_all('h1', {'class': 'content-head__title'})
+
+    if 'oglobo.globo.com' in link:  # O Globo
+        title = soup.find_all('h1', {'class': 'article__title'})
+    else:  # G1
+        title = soup.find_all('h1', {'class': 'content-head__title'})
 
     if len(title) > 0:
         title = title[0].string.lower()
 
-        if '#fato' in title:
+        if '#fato' in title and '#fake' in title:
+            return None
+        elif '#fato' in title:
             return True
         elif '#fake' in title:
             return False
@@ -477,13 +510,13 @@ def get_fact_check(sources, sleep_min, sleep_max):
         'g1.globo.com/e-ou-nao-e': check_e_ou_nao_e,
         'piaui.folha.uol.com.br/lupa': check_lupa,
         'g1.globo.com/fato-ou-fake': check_fato_ou_fake,
+        'oglobo.globo.com/fato-ou-fake': check_fato_ou_fake,
         'aosfatos.org': check_aos_fatos
     }
 
     for source, _ in sources:
         for f in check_functions:
             if f in source and fact_checks.get(f, None) is None:
-                print('Fact checker:', f)
                 if source in FACT_CHECK_HISTORY:
                     fact_checks[f] = FACT_CHECK_HISTORY[source]
                 else:
